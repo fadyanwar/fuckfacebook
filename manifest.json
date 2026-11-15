@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Fuck Facebook",
+  "version": "1.0",
+  "description": "Conditions you not to open Facebook by insulting you instead.",
+  "permissions": [
+    "tabs",
+    "webNavigation",
+    "*://*.facebook.com/*",
+    "*://facebook.com/*",
+    "*://*.fb.com/*",
+    "*://fb.com/*",
+    "*://*.messenger.com/*",
+    "*://messenger.com/*"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_security_policy": "script-src 'self'; object-src 'self'"
+}

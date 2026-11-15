@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You opened Facebook</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .card {
+    background: #2a2a2a;
+    border: 4px solid #d32f2f;
+    border-radius: 16px;
+    padding: 48px 36px;
+    max-width: 560px;
+    width: 92%;
+    box-shadow: 0 0 40px rgba(211, 47, 47, 0.35);
+  }
+  h1 {
+    font-size: 3rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    color: #ef5350;
+  }
+  #insult {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffebee;
+    margin-bottom: 34px;
+    min-height: 1.2em;
+    animation: glitch 0.15s infinite;
+  }
+  .stat {
+    font-size: 1.1rem;
+    color: #b0b0b0;
+    margin-bottom: 30px;
+  }
+  .stat b { color: #ff5252; }
+  button {
+    background: #d32f2f;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 34px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  button:active { transform: scale(0.96); }
+  button:hover { box-shadow: 0 0 20px #d32f2f; }
+  .footer {
+    margin-top: 34px;
+    font-size: 0.85rem;
+    color: #666;
+  }
+  @keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>ACCESS DENIED</h1>
+  <div id="insult">Loading shame...</div>
+  <div class="stat">Facebook open count: <span id="count">?</span></div>
+  <button id="close">Close this tab</button>
+  <div class="font">Go touch grass. Seriously.</div>
+</div>
+<script src="block.js"></script>
+</body>
+</html>
