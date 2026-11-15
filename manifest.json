@@ -17,5 +17,10 @@
     "scripts": ["background.js"]
   },
   "content_security_policy": "script-src 'self'; object-src 'self'",
-  "data_collection_permissions": {}
+  "data_collection_permissions": {
+    "description": "No personal data is collected or transmitted. A local counter of Facebook open attempts is stored in browser localStorage only.",
+    "purposes": {
+      "site_function": "optional"
+    }
+  }
 }
