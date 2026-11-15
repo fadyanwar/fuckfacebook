@@ -1,4 +1,4 @@
-# Fuck Firefox
+# Fuck Facebook
 
 A Firefox extension that conditions you not to open Facebook by insulting you instead.
 
