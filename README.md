@@ -8,7 +8,7 @@ By default, you get one hour per day across Facebook and Messenger (facebook.com
 
 ### Signed extension (permanent installation)
 
-This extension is distributed as an **unlisted** Mozilla-signed `.xpi`, rather than a public Firefox Add-ons listing. Download the signed file from your Mozilla developer account after signing completes. In Firefox, open `about:addons`, click the gear menu, choose **Install Add-on From File…**, select the `.xpi`, and approve installation. It remains installed across browser restarts. The unsigned ZIP in this repository is a submission package, not a permanently installable extension.
+This extension supports both the [Firefox Add-ons listing](https://addons.mozilla.org/en-US/firefox/addon/fuck-facebook/) and **unlisted** Mozilla-signed `.xpi` files for direct distribution. Listed releases become available after Mozilla approval. Download the signed file from your Mozilla developer account after signing completes. In Firefox, open `about:addons`, click the gear menu, choose **Install Add-on From File…**, select the `.xpi`, and approve installation. It remains installed across browser restarts. The unsigned ZIP in this repository is a submission package, not a permanently installable extension.
 
 ### Development (temporary installation)
 
@@ -42,7 +42,7 @@ The extension uses `tabs` to identify Facebook and Messenger tabs and redirect t
 
 1. Generate a JWT issuer and secret at https://addons.mozilla.org/developers/addon/api/key/.
 2. Run `python3 setup-amo-credentials.py` in a terminal. It hides input, rejects empty entries, and saves `.amo-credentials.json` with owner-only permissions. This file is excluded from Git.
-3. Build a clean source folder containing only `manifest.json`, `background.js`, `settings.js`, `block.html`, `block.js`, `options.html`, and `options.js`. Do not include credentials, credential scripts, browser policies, or older archives in the upload.
+3. Build a clean source folder containing only `manifest.json`, `background.js`, `settings.js`, `block.html`, `block.js`, `options.html`, `options.js`, and `timer-debug.js`. Do not include credentials, credential scripts, browser policies, or older archives in the upload.
 4. Supply the saved `apiKey` and `apiSecret` to `web-ext` as `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` environment variables, then run `web-ext sign --channel unlisted --source-dir <clean-source-folder> --artifacts-dir web-ext-artifacts`. This signs the extension for self-distribution without creating a public listing. The local JSON file is not automatically loaded by `web-ext`.
 5. Wait for Mozilla to finish signing. If the command times out while signing is pending, check your email and https://addons.mozilla.org/developers/ for the signed download. Install or share the resulting `.xpi`.
 
@@ -50,7 +50,18 @@ The internal extension ID is `fuckfacebook@fadyanwar.local`. Keep this ID unchan
 
 ## Validation
 
-Run the simulated timer checks with `node tests/timer.cjs`. These cover the default limit, invalid settings, changing limits during a session, preserving recorded usage, pausing while unfocused, redirecting at the threshold, and daily/startup resets. They do not replace live Firefox testing.
+The Facebook and Messenger page consoles print the shared timer status every 5 seconds, for example `[Fuck Facebook timer] counting | 3540s remaining | 60s used (shared daily timer)`. These diagnostics read saved usage; they do not change the timer. Messages show `counting`, `paused`, or `limit reached`. Browser throttling may delay logs in background tabs. Reload the extension and the site after changing these source files. A separately installed signed extension needs an updated signed build.
+
+For background events, open `about:debugging` → **This Firefox** → **Inspect** for the extension → **Console**. Updates print on tab/focus changes and approximately every 30 seconds. Enter `scheduleUpdate()` there to print immediately. Keep Facebook or Messenger active in the focused browser window to count time; focusing a separate debugging window pauses usage.
+
+Run the simulated timer checks with `node tests/timer.cjs` for Firefox background-page loading and `node tests/timer.cjs --worker` for Chrome service-worker loading. Run `node tests/timer-debug.cjs` to check page-console countdown and paused status. These cover the default limit, invalid settings, changing limits during a session, preserving recorded usage, pausing while unfocused, redirecting at the threshold, and daily/startup resets. Run `python3 tests/firefox-timer.py` for an automated live Firefox test using an isolated temporary profile and a local page under the Facebook hostname. It verifies startup, recorded usage increasing, page-console diagnostics, and automatic alarm-based redirection. Set `FIREFOX_BINARY` to override the Firefox executable.
+
+## Changes in versions 1.5 and 1.6
+
+- Fixes Firefox timer startup by loading settings as a background script.
+- Prints a shared countdown in Facebook and Messenger page consoles every five seconds, plus background event logs.
+- Tests Firefox background-page loading, Chrome worker loading, countdown logs, and a real Firefox deadline redirect.
+- Uses version 1.5 for unlisted distribution and 1.6 for the listed channel because Mozilla requires unique version numbers across channels. Both contain the same extension code.
 
 ## Changes in version 1.4
 
@@ -79,6 +90,7 @@ This is a joke/self-help tool, not therapy. If social media use is causing real 
 - `background.js` — tracks daily Facebook/Messenger usage and enforces the limit
 - `block.html` — the insult page UI
 - `block.js` — insult rotation, configured limit message, and counter logic
+- `timer-debug.js` — prints shared timer status in Facebook and Messenger page consoles
 - `settings.js` — default allowance and settings validation
 - `options.html` / `options.js` — daily allowance preferences
 - `setup-amo-credentials.py` — local Mozilla credential setup

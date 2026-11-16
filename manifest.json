@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fuck Facebook",
-  "version": "1.4",
+  "version": "1.6",
   "description": "Conditions you not to open Facebook by insulting you instead.",
   "permissions": [
     "tabs",
@@ -19,9 +19,26 @@
   "background": {
     "service_worker": "background.js",
     "scripts": [
+      "settings.js",
       "background.js"
     ]
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.facebook.com/*",
+        "*://facebook.com/*",
+        "*://*.fb.com/*",
+        "*://fb.com/*",
+        "*://*.messenger.com/*",
+        "*://messenger.com/*"
+      ],
+      "js": [
+        "settings.js",
+        "timer-debug.js"
+      ]
+    }
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "fuckfacebook@fadyanwar.local",

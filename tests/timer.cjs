@@ -23,13 +23,27 @@ const chrome = {
   windows: { async getLastFocused() { return {id: 1, focused}; }, onFocusChanged: event },
   alarms: { async create(name, value) { alarms.set(name, value); }, async clear(name) { alarms.delete(name); }, onAlarm: event }
 };
-const ctx = vm.createContext({chrome, Date: Clock, URL, console});
-ctx.importScripts = path => vm.runInContext(fs.readFileSync(require('node:path').join(root, path), 'utf8'), ctx);
-vm.runInContext(fs.readFileSync(path.join(root, 'background.js'), 'utf8'), ctx);
+const timerLogs = [];
+const ctx = vm.createContext({chrome, Date: Clock, URL, console: {
+  ...console,
+  log(...args) { timerLogs.push(args); }
+}});
+const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+const runScript = script => vm.runInContext(fs.readFileSync(path.join(root, script), 'utf8'), ctx);
+const worker = process.argv.includes('--worker');
+if (worker) {
+  ctx.importScripts = runScript;
+  runScript(manifest.background.service_worker);
+} else {
+  // Firefox background pages have no importScripts global.
+  for (const script of manifest.background.scripts) runScript(script);
+}
 const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ctx);
 (async () => {
   await update();
   assert.equal(alarms.get('usage-limit').when, now + 3600000);
+  assert.equal(timerLogs.at(-1)[1].state, 'counting');
+  assert.equal(timerLogs.at(-1)[1].remainingSeconds, 3600);
   for (const value of [undefined, null, 0, -1, 1.5, '30', 1441]) {
     ctx.input = value;
     assert.equal(vm.runInContext('getLimitMinutes(input)', ctx), 60);
@@ -40,9 +54,12 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   await update();
   assert.equal(data.usage.elapsed, 20 * 60000);
   assert.equal(alarms.get('usage-limit').when, now + 10 * 60000);
+  assert.equal(timerLogs.at(-1)[1].remainingSeconds, 600);
   data.dailyLimitMinutes = 10;
   await update();
   assert.equal(redirects, 1);
+  assert.equal(timerLogs.at(-1)[1].state, 'limit reached');
+  assert.equal(timerLogs.at(-1)[1].remainingSeconds, 0);
   assert.equal(data.usage.elapsed, 20 * 60000, 'lowering limit preserves usage');
   data.dailyLimitMinutes = 60;
   url = 'https://messenger.com/';
@@ -52,6 +69,8 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   now += 5 * 60000;
   focused = false;
   await update();
+  assert.equal(timerLogs.at(-1)[1].state, 'paused');
+  assert.equal(timerLogs.at(-1)[1].remainingSeconds, 35 * 60);
   now += 2 * 3600000;
   await update();
   assert.equal(data.usage.elapsed, 25 * 60000);
@@ -68,5 +87,5 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   now += 60000;
   await update(true);
   assert.equal(data.usage.elapsed, 0);
-  console.log('PASS: default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight and startup.');
+  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight and startup.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });
