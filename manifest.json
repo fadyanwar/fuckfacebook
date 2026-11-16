@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Fuck Facebook",
-  "version": "1.1",
+  "version": "1.4",
   "description": "Conditions you not to open Facebook by insulting you instead.",
-  "permissions": ["tabs", "webNavigation"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms"
+  ],
   "host_permissions": [
     "*://*.facebook.com/*",
     "*://facebook.com/*",
@@ -14,15 +18,23 @@
   ],
   "background": {
     "service_worker": "background.js",
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "fuckfacebook@fadyanwar.local",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   }
 }

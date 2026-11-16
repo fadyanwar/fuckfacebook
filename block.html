@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>You opened Facebook</title>
+<title>Your time is up</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
@@ -78,12 +78,15 @@
 </head>
 <body>
 <div class="card">
-  <h1>ACCESS DENIED</h1>
+  <h1>Your time is up</h1>
+  <p id="limit-message" class="stat">You reached your daily limit on Facebook and Messenger. That’s enough scrolling. Come back tomorrow.</p>
   <div id="insult">Loading shame...</div>
-  <div class="stat">Facebook open count: <span id="count">?</span></div>
+  <div class="stat">Limit page visits: <span id="count">?</span></div>
   <button id="close">Close this tab</button>
+  <p class="stat"><a href="options.html" style="color: #ffb4ab">Change daily limit</a></p>
   <div class="font">Go touch grass. Seriously.</div>
 </div>
+<script src="settings.js"></script>
 <script src="block.js"></script>
 </body>
 </html>
