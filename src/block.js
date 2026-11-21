@@ -22,13 +22,13 @@
   ];
 
   async function showLimit() {
-    const { dailyLimitMinutes } = await chrome.storage.local.get("dailyLimitMinutes");
+    const { dailyLimitMinutes } = await ext.storage.local.get("dailyLimitMinutes");
     const minutes = getLimitMinutes(dailyLimitMinutes);
     document.getElementById("limit-message").textContent =
       `Your daily limit is ${minutes} ${minutes === 1 ? "minute" : "minutes"} across Facebook and Messenger. That’s enough scrolling. Come back tomorrow.`;
   }
   showLimit().catch(console.error);
-  chrome.storage.onChanged.addListener((changes, area) => {
+  ext.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.dailyLimitMinutes) showLimit().catch(console.error);
   });
 
@@ -52,9 +52,9 @@
   // case after a redirect, so close the tab through the tabs API instead.
   async function closeTab() {
     try {
-      const tab = await chrome.tabs.getCurrent();
+      const tab = await ext.tabs.getCurrent();
       if (tab) {
-        await chrome.tabs.remove(tab.id);
+        await ext.tabs.remove(tab.id);
         return;
       }
     } catch (error) {

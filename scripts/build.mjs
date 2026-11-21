@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Builds the extension into dist/<browser>/ and dist/fuckfacebook-<browser>-<version>.zip.
+// Builds src/ with manifests/base.json + manifests/<browser>.json into
+// dist/<browser>/ and dist/fuckfacebook-<browser>-<version>.zip (browser: firefox, chrome).
 // No dependencies: files are copied as-is and zipped with a minimal deterministic writer.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,15 +10,25 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
 
-// Files shipped in every build. Keep this list in sync with the manifest and HTML pages.
-const FILES = [
-  'background.js', 'settings.js', 'timer-debug.js',
-  'block.html', 'block.js', 'options.html', 'options.js',
-];
+const src = path.join(root, 'src');
+export const TARGETS = ['firefox', 'chrome'];
 
-const TARGETS = {
-  firefox: () => JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8')),
-};
+// manifests/base.json holds everything shared; manifests/<browser>.json adds
+// or replaces top-level keys (background, browser-specific settings).
+export function manifestFor(target) {
+  const read = name => JSON.parse(fs.readFileSync(path.join(root, 'manifests', `${name}.json`), 'utf8'));
+  return { ...read('base'), ...read(target) };
+}
+
+// Every file the manifest points at must exist in src/.
+function referencedFiles(manifest) {
+  return [
+    ...(manifest.background.scripts || []),
+    ...(manifest.background.service_worker ? [manifest.background.service_worker] : []),
+    ...manifest.content_scripts.flatMap(script => script.js || []),
+    manifest.options_ui.page,
+  ];
+}
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
@@ -77,12 +88,16 @@ export function zip(entries) {
 }
 
 export function build(target) {
-  const manifest = TARGETS[target]();
+  const manifest = manifestFor(target);
+  const files = fs.readdirSync(src).filter(name => fs.statSync(path.join(src, name)).isFile()).sort();
+  for (const file of referencedFiles(manifest)) {
+    if (!files.includes(file)) throw new Error(`${target} manifest references missing file src/${file}`);
+  }
   const out = path.join(dist, target);
   fs.rmSync(out, { recursive: true, force: true });
   fs.mkdirSync(out, { recursive: true });
   const entries = [{ name: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2) + '\n') }];
-  for (const file of FILES) entries.push({ name: file, data: fs.readFileSync(path.join(root, file)) });
+  for (const file of files) entries.push({ name: file, data: fs.readFileSync(path.join(src, file)) });
   for (const { name, data } of entries) fs.writeFileSync(path.join(out, name), data);
   const archive = path.join(dist, `fuckfacebook-${target}-${manifest.version}.zip`);
   fs.writeFileSync(archive, zip(entries));
@@ -91,10 +106,10 @@ export function build(target) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const requested = process.argv.slice(2);
-  const targets = requested.length ? requested : Object.keys(TARGETS);
+  const targets = requested.length ? requested : TARGETS;
   for (const target of targets) {
-    if (!TARGETS[target]) {
-      console.error(`Unknown target "${target}". Choose from: ${Object.keys(TARGETS).join(', ')}`);
+    if (!TARGETS.includes(target)) {
+      console.error(`Unknown target "${target}". Choose from: ${TARGETS.join(', ')}`);
       process.exit(1);
     }
     const { dir, archive } = build(target);

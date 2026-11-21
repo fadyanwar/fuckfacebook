@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', 'dist', 'firefox');
 let now = new Date(2026, 10, 16, 12).getTime();
 class Clock extends Date {
   constructor(...args) { super(...(args.length ? args : [now])); }
@@ -26,7 +26,7 @@ const chrome = {
   },
   alarms: { async create() {}, async clear() {}, onAlarm: event }
 };
-const ctx = vm.createContext({chrome, Date: Clock, URL, console: {log() {}, error(...args) { throw args[1] || args[0]; }}});
+const ctx = vm.createContext({browser: chrome, Date: Clock, URL, console: {log() {}, error(...args) { throw args[1] || args[0]; }}});
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 for (const script of manifest.background.scripts) vm.runInContext(fs.readFileSync(path.join(root, script), 'utf8'), ctx);
 (async () => {

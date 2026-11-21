@@ -7,9 +7,11 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "npm run test:unit && npm run lint:firefox",
-    "test:unit": "node tests/timer.cjs && node tests/timer.cjs --worker && node tests/timer-android.cjs && node tests/timer-debug.cjs",
-    "lint:firefox": "node scripts/build.mjs firefox && web-ext lint --source-dir dist/firefox",
-    "test:firefox": "python3 tests/firefox-timer.py"
+    "test:unit": "node scripts/build.mjs && node tests/build.cjs && node tests/timer.cjs && node tests/timer.cjs --worker && node tests/timer-android.cjs && node tests/timer-debug.cjs && node tests/timer-debug.cjs --chrome",
+    "lint:firefox": "node scripts/build.mjs firefox && web-ext lint --source-dir dist/firefox --warnings-as-errors",
+    "test:chrome": "xvfb-run -a node tests/chrome-e2e.mjs",
+    "test:firefox": "python3 tests/firefox-timer.py",
+    "test:all": "npm test && npm run test:chrome && npm run test:firefox"
   },
   "devDependencies": {
     "node": "22.23.4",
