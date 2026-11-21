@@ -2,7 +2,9 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const root = path.resolve(__dirname, '..');
+const worker = process.argv.includes('--worker');
+// Tests the built extension: run `npm run build` first (npm test does).
+const root = path.resolve(__dirname, '..', 'dist', worker ? 'chrome' : 'firefox');
 let now = new Date(2026, 10, 16, 12).getTime();
 class Clock extends Date {
   constructor(...args) { super(...(args.length ? args : [now])); }
@@ -26,7 +28,8 @@ const chrome = {
   alarms: { async create(name, value) { alarms.set(name, value); }, async clear(name) { alarms.delete(name); }, onAlarm: event }
 };
 const timerLogs = [], timerErrors = [];
-const ctx = vm.createContext({chrome, Date: Clock, URL, console: {
+// Firefox exposes the API as `browser`, Chrome as `chrome`.
+const ctx = vm.createContext({[worker ? 'chrome' : 'browser']: chrome, Date: Clock, URL, console: {
   ...console,
   log(...args) { timerLogs.push(args); },
   error(...args) { timerErrors.push(args); }
@@ -35,9 +38,8 @@ const unhandled = [];
 process.on('unhandledRejection', error => unhandled.push(error));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const runScript = script => vm.runInContext(fs.readFileSync(path.join(root, script), 'utf8'), ctx);
-const worker = process.argv.includes('--worker');
 if (worker) {
-  ctx.importScripts = runScript;
+  ctx.importScripts = (...scripts) => scripts.forEach(runScript);
   runScript(manifest.background.service_worker);
 } else {
   // Firefox background pages have no importScripts global.

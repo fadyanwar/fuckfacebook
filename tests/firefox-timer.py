@@ -7,7 +7,7 @@ reports = []
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         print('Local test page requested', flush=True); self.send_response(200); self.send_header('Content-Type','text/html'); self.end_headers()
-        self.wfile.write(b'<!doctype html><title>Isolated timer test</title><p>Local test fixture</p>')
+        self.wfile.write((root/'tests'/'fixtures'/'facebook.html').read_bytes())
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         reports.append(body)

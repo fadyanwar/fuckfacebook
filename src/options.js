@@ -6,7 +6,7 @@ const reset = document.getElementById("reset");
 
 async function load() {
   try {
-    const { dailyLimitMinutes } = await chrome.storage.local.get("dailyLimitMinutes");
+    const { dailyLimitMinutes } = await ext.storage.local.get("dailyLimitMinutes");
     minutes.value = getLimitMinutes(dailyLimitMinutes);
     minutes.disabled = save.disabled = reset.disabled = false;
   } catch {
@@ -17,7 +17,7 @@ async function load() {
 async function saveLimit(value) {
   save.disabled = reset.disabled = true;
   try {
-    await chrome.storage.local.set({ dailyLimitMinutes: value });
+    await ext.storage.local.set({ dailyLimitMinutes: value });
     minutes.value = value;
     status.textContent = `Saved: ${value} ${value === 1 ? "minute" : "minutes"} per day.`;
   } catch {

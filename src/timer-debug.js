@@ -15,13 +15,13 @@
     const state = elapsed >= limit ? "limit reached" : running ? "counting" : "paused";
     console.log(`[Fuck Facebook timer] ${state} | ${remaining}s remaining | ${Math.floor(elapsed / 1000)}s used (shared daily timer)`);
   }
-  chrome.storage.onChanged.addListener((changes, area) => {
+  ext.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     for (const key of ["usage", "dailyLimitMinutes"]) {
       if (changes[key]) saved[key] = changes[key].newValue;
     }
   });
-  chrome.storage.local.get(["usage", "dailyLimitMinutes"]).then(value => {
+  ext.storage.local.get(["usage", "dailyLimitMinutes"]).then(value => {
     // Changes received while loading take precedence over the initial snapshot.
     saved = { ...value, ...saved };
     console.log("[Fuck Facebook timer] Page diagnostics loaded; status prints every 5 seconds.");
