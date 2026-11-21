@@ -19,7 +19,24 @@ function dayKey(time) {
   return new Date(time).toLocaleDateString("en-CA");
 }
 
+// storage.session is cleared when the browser restarts or the extension is
+// reloaded or updated, but survives the background script being suspended.
+// The first update of a new browser session must not count the time since the
+// saved session start: the browser was closed for that period.
+async function startsNewBrowserSession() {
+  if (!chrome.storage.session) return false;
+  try {
+    const { sessionStarted } = await chrome.storage.session.get("sessionStarted");
+    if (sessionStarted) return false;
+    await chrome.storage.session.set({ sessionStarted: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function updateUsage(resetSession = false) {
+  if (await startsNewBrowserSession()) resetSession = true;
   const now = Date.now();
   const { usage: saved, dailyLimitMinutes } = await chrome.storage.local.get(["usage", "dailyLimitMinutes"]);
   const limitMs = getLimitMinutes(dailyLimitMinutes) * 60 * 1000;
@@ -83,6 +100,7 @@ chrome.windows.onFocusChanged.addListener(() => scheduleUpdate());
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === TIMER || alarm.name === "usage-limit") scheduleUpdate();
 });
+// Fallbacks for browsers without storage.session; harmless otherwise.
 chrome.runtime.onStartup.addListener(() => scheduleUpdate(true));
 chrome.runtime.onInstalled.addListener(() => scheduleUpdate(true));
 // The recurring alarm also handles midnight and restores a missed deadline.

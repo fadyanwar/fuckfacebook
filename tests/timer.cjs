@@ -9,6 +9,7 @@ class Clock extends Date {
   static now() { return now; }
 }
 const data = {};
+let sessionData = {};
 let focused = true, url = 'https://facebook.com/', redirects = 0;
 const alarms = new Map();
 const event = { addListener() {} };
@@ -17,6 +18,7 @@ const chrome = {
   runtime: { getURL: p => 'extension://' + p, onStartup: event, onInstalled: event },
   storage: {
     local: { async get() { return JSON.parse(JSON.stringify(data)); }, async set(value) { Object.assign(data, JSON.parse(JSON.stringify(value))); } },
+    session: { async get() { return {...sessionData}; }, async set(value) { Object.assign(sessionData, value); } },
     onChanged: { addListener(fn) { onChanged = fn; } }
   },
   tabs: { async query() { return [{id: 1, active: true, windowId: 1, url}]; }, async update(id, value) { redirects++; url = value.url; }, onActivated: event, onUpdated: event, onRemoved: event },
@@ -87,5 +89,21 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   now += 60000;
   await update(true);
   assert.equal(data.usage.elapsed, 0);
-  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight and startup.`);
+  // Background suspended and restarted within the same browser session: the
+  // time the tab stayed active still counts.
+  now += 10 * 60000;
+  await update();
+  assert.equal(data.usage.elapsed, 10 * 60000, 'worker restart keeps counting');
+  // Browser closed for two hours while counting, then reopened the same day.
+  // The top-level update runs before runtime.onStartup and must not count it.
+  assert.ok(data.usage.since !== null);
+  now += 2 * 3600000;
+  sessionData = {};
+  await update();
+  assert.equal(data.usage.elapsed, 10 * 60000, 'closed-browser time is not counted');
+  assert.equal(data.usage.since, now);
+  now += 60000;
+  await update();
+  assert.equal(data.usage.elapsed, 11 * 60000, 'counting resumes after restart');
+  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight, startup and browser restart.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });
