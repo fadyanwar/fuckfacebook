@@ -17,10 +17,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args): pass
 server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
+# Test the packaged build, using the repository's pinned web-ext and Node.
+bin_dir = root/'node_modules'/'.bin'
+env = {**os.environ, 'PATH': f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"}
+subprocess.run(['node', str(root/'scripts'/'build.mjs'), 'firefox'], check=True, env=env)
+web_ext = str(bin_dir/'web-ext') if (bin_dir/'web-ext').exists() else 'web-ext'
 with tempfile.TemporaryDirectory(prefix='ff-timer-') as temp:
-    src = pathlib.Path(temp)
-    for name in ('manifest.json','background.js','settings.js','block.html','block.js','options.html','options.js','timer-debug.js'):
-        shutil.copy(root/name, src/name)
+    src = pathlib.Path(temp)/'extension'
+    shutil.copytree(root/'dist'/'firefox', src)
     manifest = json.loads((src/'manifest.json').read_text())
     endpoint = f'http://127.0.0.1:{server.server_port}/'
     manifest['host_permissions'].append(endpoint+'*')
@@ -44,7 +48,10 @@ addEventListener('unhandledrejection', e => report({type:'FAIL', error:String(e.
   await new Promise(r=>setTimeout(r,1000));
   await scheduleUpdate();
   await report({type:'startup',usage:(await browser.storage.local.get('usage')).usage});
-  const tab = await browser.tabs.create({url:FACEBOOK_URL, active:true});
+  // Navigate the startup tab: Firefox 154 leaves a tab created by tabs.create
+  // in the background here even with active:true.
+  const [current] = await browser.tabs.query({active:true, lastFocusedWindow:true});
+  const tab = await browser.tabs.update(current.id, {url:FACEBOOK_URL});
   await browser.windows.update(tab.windowId,{focused:true});
   await new Promise(r=>setTimeout(r,2000));
   await browser.storage.local.set({dailyLimitMinutes:1,usage:{day:dayKey(Date.now()),elapsed:50000,since:null}});
@@ -69,8 +76,8 @@ addEventListener('unhandledrejection', e => report({type:'FAIL', error:String(e.
  } catch (e) { await report({type:'FAIL',error:String(e),stack:e.stack}); }
 })();
 '''.replace('FACEBOOK_URL', json.dumps(f'http://facebook.com:{server.server_port}/')))
-    log = open(src/'browser.log','w')
-    proc = subprocess.Popen(['web-ext','run','--source-dir',str(src),'--firefox',firefox,'--no-reload','--no-input','--pref=network.dns.localDomains=facebook.com','--pref=dom.security.https_first=false','--pref=network.stricttransportsecurity.preloadlist=false','--args=-headless'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+    log = open(pathlib.Path(temp)/'browser.log','w')
+    proc = subprocess.Popen([web_ext,'run','--source-dir',str(src),'--firefox',firefox,'--no-reload','--no-input','--pref=network.dns.localDomains=facebook.com','--pref=dom.security.https_first=false','--pref=network.stricttransportsecurity.preloadlist=false','--args=-headless'],stdout=log,stderr=subprocess.STDOUT,start_new_session=True,env=env)
     try:
         finished = result.wait(90)
         if not finished:
