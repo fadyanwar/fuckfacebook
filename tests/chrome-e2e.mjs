@@ -74,7 +74,6 @@ try {
   assert.ok(counting.since, `timer counts on Facebook: ${JSON.stringify(counting)}`);
   await page.locator('[role="feed"] [role="article"]').nth(4).waitFor();
   step('Facebook tab counts time while its feed loads dynamically');
-  await page.waitForFunction(() => true);
   const deadline = Date.now() + 8000;
   while (!pageLogs.some(line => /\[Fuck Facebook timer\] counting \| \d+s remaining/.test(line)) && Date.now() < deadline) {
     await page.waitForTimeout(250);
