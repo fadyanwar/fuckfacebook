@@ -48,7 +48,19 @@
   showInsult();
   setInterval(showInsult, 1500);
 
-  document.getElementById("close").addEventListener("click", () => {
-    try { window.close(); } catch {}
-  });
+  // window.close() is refused for tabs that have history, which is always the
+  // case after a redirect, so close the tab through the tabs API instead.
+  async function closeTab() {
+    try {
+      const tab = await chrome.tabs.getCurrent();
+      if (tab) {
+        await chrome.tabs.remove(tab.id);
+        return;
+      }
+    } catch (error) {
+      console.error("[Fuck Facebook] Could not close the tab:", error);
+    }
+    window.close();
+  }
+  document.getElementById("close").addEventListener("click", () => { closeTab(); });
 })();
