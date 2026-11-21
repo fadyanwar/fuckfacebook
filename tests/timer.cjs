@@ -25,11 +25,14 @@ const chrome = {
   windows: { async getLastFocused() { return {id: 1, focused}; }, onFocusChanged: event },
   alarms: { async create(name, value) { alarms.set(name, value); }, async clear(name) { alarms.delete(name); }, onAlarm: event }
 };
-const timerLogs = [];
+const timerLogs = [], timerErrors = [];
 const ctx = vm.createContext({chrome, Date: Clock, URL, console: {
   ...console,
-  log(...args) { timerLogs.push(args); }
+  log(...args) { timerLogs.push(args); },
+  error(...args) { timerErrors.push(args); }
 }});
+const unhandled = [];
+process.on('unhandledRejection', error => unhandled.push(error));
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 const runScript = script => vm.runInContext(fs.readFileSync(path.join(root, script), 'utf8'), ctx);
 const worker = process.argv.includes('--worker');
@@ -105,5 +108,18 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   now += 60000;
   await update();
   assert.equal(data.usage.elapsed, 11 * 60000, 'counting resumes after restart');
-  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight, startup and browser restart.`);
+  // A failing update is logged once, is not an unhandled rejection, and does
+  // not stop the next update.
+  const query = chrome.tabs.query;
+  chrome.tabs.query = async () => { throw new Error('tabs unavailable'); };
+  vm.runInContext('scheduleUpdate()', ctx);
+  await vm.runInContext('pending', ctx);
+  chrome.tabs.query = query;
+  await update();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(timerErrors.length, 1, 'failure logged once');
+  assert.match(String(timerErrors[0][1]), /tabs unavailable/);
+  assert.deepEqual(unhandled, [], 'no unhandled rejections');
+  assert.equal(timerLogs.at(-1)[1].state, 'counting');
+  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight, startup, browser restart and update errors.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

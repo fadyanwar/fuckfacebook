@@ -83,9 +83,12 @@ async function updateUsage(resetSession = false) {
   });
 }
 
+// Updates run one at a time. A failed update is logged once and does not
+// block later ones; callers that await the result still see the error.
 function scheduleUpdate(resetSession = false) {
-  pending = pending.catch(console.error).then(() => updateUsage(resetSession));
-  return pending;
+  const run = pending.then(() => updateUsage(resetSession));
+  pending = run.catch(error => console.error("[Fuck Facebook timer] Update failed:", error));
+  return run;
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
