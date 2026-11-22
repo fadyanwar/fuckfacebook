@@ -46,6 +46,8 @@ if (worker) {
   for (const script of manifest.background.scripts) runScript(script);
 }
 const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ctx);
+// The browser is awake: the 30-second alarm fires throughout (a jump of `ms` in one step would look like sleep).
+const awake = async ms => { for (let left = ms; left > 0; left -= 30000) { now += Math.min(30000, left); await update(); } };
 (async () => {
   await update();
   assert.equal(alarms.get('usage-limit').when, now + 3600000);
@@ -55,7 +57,8 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
     ctx.input = value;
     assert.equal(vm.runInContext('getLimitMinutes(input)', ctx), 60);
   }
-  now += 20 * 60000;
+  await awake(20 * 60000 - 30000);
+  now += 30000;
   data.dailyLimitMinutes = 30;
   onChanged({dailyLimitMinutes: {newValue: 30}}, 'local');
   await update();
@@ -73,7 +76,8 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   await update();
   assert.equal(redirects, 1, 'raising limit permits continued use');
   assert.equal(alarms.get('usage-limit').when, now + 40 * 60000);
-  now += 5 * 60000;
+  await awake(5 * 60000 - 30000);
+  now += 30000;
   focused = false;
   await update();
   assert.equal(timerLogs.at(-1)[1].state, 'paused');
@@ -83,8 +87,7 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   assert.equal(data.usage.elapsed, 25 * 60000);
   focused = true;
   await update();
-  now += 35 * 60000;
-  await update();
+  await awake(35 * 60000);
   assert.equal(redirects, 2);
   now = new Date(2026, 10, 17, 1).getTime();
   url = 'https://facebook.com/';
@@ -96,8 +99,7 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   assert.equal(data.usage.elapsed, 0);
   // Background suspended and restarted within the same browser session: the
   // time the tab stayed active still counts.
-  now += 10 * 60000;
-  await update();
+  await awake(10 * 60000);
   assert.equal(data.usage.elapsed, 10 * 60000, 'worker restart keeps counting');
   // Browser closed for two hours while counting, then reopened the same day.
   // The top-level update runs before runtime.onStartup and must not count it.
@@ -110,6 +112,15 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   now += 60000;
   await update();
   assert.equal(data.usage.elapsed, 11 * 60000, 'counting resumes after restart');
+  // Computer asleep for three hours with Facebook focused (issue #8): no alarms fire during suspend, and the first
+  // update after waking adds at most 90 seconds, not the whole gap.
+  const beforeSleep = data.usage.elapsed;
+  now += 3 * 3600000;
+  await update();
+  assert.equal(data.usage.elapsed, beforeSleep + 90000, 'sleep is not counted as usage');
+  assert.equal(timerLogs.at(-1)[1].state, 'counting');
+  await awake(60000);
+  assert.equal(data.usage.elapsed, beforeSleep + 90000 + 60000, 'counting resumes after waking');
   // A failing update is logged once, is not an unhandled rejection, and does
   // not stop the next update.
   const query = chrome.tabs.query;
@@ -123,5 +134,5 @@ const update = (reset = false) => vm.runInContext(`scheduleUpdate(${reset})`, ct
   assert.match(String(timerErrors[0][1]), /tabs unavailable/);
   assert.deepEqual(unhandled, [], 'no unhandled rejections');
   assert.equal(timerLogs.at(-1)[1].state, 'counting');
-  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight, startup, browser restart and update errors.`);
+  console.log(`PASS (${worker ? 'Chrome worker' : 'Firefox background page'}): default/invalid settings, live limit changes, preserved usage, focus pause, threshold, midnight, startup, browser restart, sleep and update errors.`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

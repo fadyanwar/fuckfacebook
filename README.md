@@ -2,7 +2,7 @@
 
 A browser extension for Firefox and Chrome that conditions you not to open Facebook by insulting you instead.
 
-By default, you get one hour per day across Facebook and Messenger (facebook.com, fb.com, messenger.com). The timer counts time while one of these sites is the active tab in the focused browser window, including time left idle in that tab. Background tabs and time with the browser unfocused do not count. After the configured limit, all open matching tabs redirect to the shame page, and further visits are blocked until the next local calendar day. Usage is saved across browser restarts; time while the browser is closed does not count.
+By default, you get one hour per day across Facebook and Messenger (facebook.com, fb.com, messenger.com). The timer counts time while one of these sites is the active tab in the focused browser window, including time left idle in that tab. Background tabs and time with the browser unfocused do not count. After the configured limit, all open matching tabs redirect to the shame page, and further visits are blocked until the next local calendar day. Usage is saved across browser restarts; time while the browser is closed or the computer is asleep does not count.
 
 Both browsers run the same code from `src/`. The build adds a manifest for each browser.
 
@@ -57,6 +57,7 @@ Set a daily allowance from 1 to 1,440 whole minutes and click **Save**. The defa
 - `background.js` tracks focused-tab time using persistent storage and browser alarms.
 - The daily allowance is shared across tabs and both sites, and resets at local midnight.
 - A browser restart is detected with `storage.session`, so time while the browser is closed is never counted.
+- No alarms fire while the computer is asleep, so one update adds at most 90 seconds (the timer normally updates every 30 seconds). Waking from sleep does not use up the limit.
 - At the limit, matching tabs redirect to `block.html`.
 - `block.html` rotates insults every 1.5 seconds and keeps a count of limit-page visits.
 - **Close this tab** closes the shame page.
@@ -168,6 +169,7 @@ The internal extension ID is `fuckfacebook@fadyanwar.local`. Keep this ID unchan
 - Styles the shame-page footer (#4).
 - Supports Firefox for Android 142+ and fixes the `web-ext lint` minimum-version warning (#5).
 - Removes stale ZIPs from the repository and pins the build and test tools (#6).
+- Does not count time while the computer is asleep (#8).
 - Gives Firefox its own manifest, which fixes the `web-ext lint` warning that `background.service_worker` is ignored (#7).
 
 ## Changes in versions 1.5 and 1.6

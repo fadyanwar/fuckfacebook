@@ -36,6 +36,8 @@ async function startsNewBrowserSession() {
   }
 }
 
+const MAX_STEP_MS = 90 * 1000; // a little more than the 30-second alarm period
+
 async function updateUsage(resetSession = false) {
   if (await startsNewBrowserSession()) resetSession = true;
   const now = Date.now();
@@ -50,7 +52,9 @@ async function updateUsage(resetSession = false) {
     usage.elapsed = 0;
   }
   if (usage.since !== null && !resetSession) {
-    usage.elapsed += Math.max(0, now - Math.max(usage.since, midnight.getTime()));
+    // While the browser runs, the 30-second alarm updates at least every 30 s. A longer gap means the computer was
+    // asleep (no alarms fire during suspend), so one update adds at most MAX_STEP_MS: sleep does not use up the limit.
+    usage.elapsed += Math.min(MAX_STEP_MS, Math.max(0, now - Math.max(usage.since, midnight.getTime())));
   }
   usage.since = null;
 

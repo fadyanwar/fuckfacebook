@@ -32,8 +32,8 @@ for (const script of manifest.background.scripts) vm.runInContext(fs.readFileSyn
 (async () => {
   await vm.runInContext('pending', ctx);
   assert.equal(data.usage.since, now, 'counting starts without a windows API');
-  now += 61 * 60000;
-  await vm.runInContext('scheduleUpdate()', ctx);
+  // 61 minutes with the 30-second alarm firing; stop at the first redirect.
+  for (let i = 0; i < 122 && !redirects; i++) { now += 30000; await vm.runInContext('scheduleUpdate()', ctx); }
   assert.equal(redirects, 1, 'limit enforced without a windows API');
   console.log('PASS (Firefox for Android): background loads and enforces the limit without a windows API.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
